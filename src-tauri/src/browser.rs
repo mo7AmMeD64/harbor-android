@@ -56,6 +56,23 @@ const STREMIO_CAPTURE_SCRIPT: &str = r#"
 })();
 "#;
 
+#[cfg(target_os = "android")]
+#[tauri::command]
+pub async fn browser_open(app: AppHandle, url: String) -> Result<(), String> {
+    // ANDROID FORK: the desktop version pops a bespoke, decorated child
+    // window (position/size/shadow — none of which exist in Tauri's mobile
+    // WebviewWindow API). On mobile the natural equivalent is just handing
+    // the URL to the system browser via the already-registered opener
+    // plugin, so addon "Install"/external links open in Chrome (or
+    // whatever's default) instead of inside Harbor.
+    use tauri_plugin_opener::OpenerExt;
+    let _ = Url::parse(&url).map_err(|e| format!("parse url: {}", e))?;
+    app.opener()
+        .open_url(url, None::<&str>)
+        .map_err(|e| format!("open_url: {}", e))
+}
+
+#[cfg(not(target_os = "android"))]
 #[tauri::command]
 pub async fn browser_open(app: AppHandle, url: String) -> Result<(), String> {
     let parsed = Url::parse(&url).map_err(|e| format!("parse url: {}", e))?;

@@ -13,8 +13,45 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct TranscodeProfile {
+    #[serde(default = "default_max_height")]
+    pub max_height: u32,
+    #[serde(default)]
+    pub force_h264: bool,
+    #[serde(default)]
+    pub force_aac: bool,
+    #[serde(default)]
+    pub force_stereo: bool,
+    #[serde(default)]
+    pub max_video_kbps: Option<u32>,
+}
+
+impl Default for TranscodeProfile {
+    fn default() -> Self {
+        TranscodeProfile {
+            max_height: 1080,
+            force_h264: true,
+            force_aac: true,
+            force_stereo: true,
+            max_video_kbps: Some(6000),
+        }
+    }
+}
+
+fn default_max_height() -> u32 {
+    1080
+}
+
+// ANDROID FORK: `cast_hls` (Chromecast live-HLS transcode server) and
+// `handle_transcode` (ffmpeg-sidecar transcode, from `transcode.rs`) are
+// desktop-only — see README-ANDROID.md. Everything else in this file (the
+// header-forwarding proxy, used for e.g. Real-Debrid auth headers) is core
+// and stays on Android too.
+#[cfg(not(target_os = "android"))]
 use crate::cast_hls::HlsState;
-use crate::transcode::{handle_transcode, TranscodeProfile};
+#[cfg(not(target_os = "android"))]
+use crate::transcode::handle_transcode;
 
 #[derive(Clone)]
 struct Session {
@@ -32,6 +69,7 @@ pub struct ProxyState {
     sessions: Arc<RwLock<HashMap<String, Session>>>,
     port: u16,
     client: reqwest::Client,
+    #[cfg(not(target_os = "android"))]
     hls: HlsState,
 }
 
@@ -66,6 +104,7 @@ impl ProxyState {
             sessions: Arc::new(RwLock::new(HashMap::new())),
             port: 0,
             client: reqwest::Client::new(),
+            #[cfg(not(target_os = "android"))]
             hls: HlsState::new(),
         }
     }
@@ -83,11 +122,13 @@ impl ProxyState {
             .pool_idle_timeout(std::time::Duration::from_secs(60))
             .build()
             .map_err(|e| format!("client build: {}", e))?;
+        #[cfg(not(target_os = "android"))]
         let hls = HlsState::new();
         let state = ProxyState {
             sessions: Arc::new(RwLock::new(HashMap::new())),
             port,
             client,
+            #[cfg(not(target_os = "android"))]
             hls: hls.clone(),
         };
         let proxy_routes = Router::new()
@@ -98,7 +139,10 @@ impl ProxyState {
             )
             .route("/health", get(handle_health))
             .with_state(state.clone());
+        #[cfg(not(target_os = "android"))]
         let app = proxy_routes.merge(crate::cast_hls::router(hls));
+        #[cfg(target_os = "android")]
+        let app = proxy_routes;
         tokio::spawn(async move {
             if let Err(e) = axum::serve(listener, app).await {
                 eprintln!("[stream-proxy] server error: {}", e);
@@ -159,6 +203,7 @@ impl ProxyState {
             .burn_sub_path
             .clone()
             .map(|path| (path, args.burn_sub_style.clone().unwrap_or_default()));
+        #[cfg(not(target_os = "android"))]
         if args.transcode {
             let seek = args.start_time_sec.unwrap_or(0.0).max(0.0);
             match self
@@ -187,6 +232,8 @@ impl ProxyState {
                 }
             }
         }
+        #[cfg(target_os = "android")]
+        let _ = &burn_sub;
         let playlist_parts = if args.transcode {
             None
         } else {
@@ -232,10 +279,12 @@ impl ProxyState {
         self.sessions.write().await.remove(session_id);
     }
 
+    #[cfg(not(target_os = "android"))]
     pub async fn stop_hls_session(&self, session_id: &str) -> bool {
         self.hls.stop_session(session_id).await
     }
 
+    #[cfg(not(target_os = "android"))]
     pub async fn stop_all_hls(&self) -> usize {
         self.hls.stop_all().await
     }
@@ -256,7 +305,10 @@ impl ProxyState {
             }
             stale.len()
         };
-        removed += self.hls.evict_idle(HLS_IDLE).await;
+        #[cfg(not(target_os = "android"))]
+        {
+            removed += self.hls.evict_idle(HLS_IDLE).await;
+        }
         removed
     }
 }
@@ -264,10 +316,15 @@ impl ProxyState {
 pub(crate) fn shutdown(app: &tauri::AppHandle) {
     use tauri::Manager;
 
-    let state = app.state::<ProxyState>().inner().clone();
-    tauri::async_runtime::block_on(async move {
-        state.stop_all_hls().await;
-    });
+    #[cfg(not(target_os = "android"))]
+    {
+        let state = app.state::<ProxyState>().inner().clone();
+        tauri::async_runtime::block_on(async move {
+            state.stop_all_hls().await;
+        });
+    }
+    #[cfg(target_os = "android")]
+    let _ = app;
 }
 
 pub(crate) fn lan_ip() -> Option<String> {
@@ -363,6 +420,7 @@ async fn handle_stream(
         }
     };
 
+    #[cfg(not(target_os = "android"))]
     if session.transcode {
         return handle_transcode(
             &session.url,

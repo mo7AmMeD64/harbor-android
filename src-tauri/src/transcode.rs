@@ -1,38 +1,12 @@
 use axum::body::Body;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
-use serde::Deserialize;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct TranscodeProfile {
-    #[serde(default = "default_max_height")]
-    pub max_height: u32,
-    #[serde(default)]
-    pub force_h264: bool,
-    #[serde(default)]
-    pub force_aac: bool,
-    #[serde(default)]
-    pub force_stereo: bool,
-    #[serde(default)]
-    pub max_video_kbps: Option<u32>,
-}
-
-impl Default for TranscodeProfile {
-    fn default() -> Self {
-        TranscodeProfile {
-            max_height: 1080,
-            force_h264: true,
-            force_aac: true,
-            force_stereo: true,
-            max_video_kbps: Some(6000),
-        }
-    }
-}
-
-fn default_max_height() -> u32 {
-    1080
-}
+// ANDROID FORK: moved to stream_proxy.rs so that plain config struct stays
+// available on Android too (this module — the actual ffmpeg execution — does
+// not). Re-exported here so nothing else in this file has to change.
+pub use crate::stream_proxy::TranscodeProfile;
 
 pub fn locate_ffmpeg() -> Option<std::path::PathBuf> {
     let mut owned: Vec<String> = Vec::new();
