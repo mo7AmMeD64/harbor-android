@@ -62,7 +62,29 @@ Workflow جديد (يدوي التشغيل عبر `workflow_dispatch`) يسوي:
    `process.rs`) — لو أول `cargo check` فشل فيها، غالباً تحتاج نفس أسلوب
    الـ `#[cfg(not(target_os = "android"))]`.
 
+## سجل الإصلاحات (يتحدّث كل ما نصلح خطأ من CI)
+
+### ✅ إصلاح ١: `openssl-sys` فشل عند `aarch64-linux-android`
+**الخطأ:** `cargo check --target aarch64-linux-android` فشل بمرحلة بناء `openssl-sys`
+لأن `reqwest` كان مضبوط على ميزة `native-tls` (تعتمد على OpenSSL حقيقية
+مبنية للمعمارية، غير متوفرة بـ CI).
+
+**الحل:** فصلت `reqwest` بـ `Cargo.toml`:
+- سطح المكتب (`not(target_os = "android")`): يبقى `native-tls` زي ما هو.
+- أندرويد (`target_os = "android"`): يستخدم `rustls-tls-webpki-roots` بدل —
+  مكتبة TLS مكتوبة بالكامل بـ Rust، ما تحتاج OpenSSL نظام ولا كومبايلر C
+  منفصل. المشروع أصلاً يستخدم `rustls` بمكان ثاني، فهذا ينسجم مع الإعداد
+  الموجود.
+
+**⚠️ احتمال يطلع خطأ مشابه بعده:** بعض مكتبات TLS البديلة (`ring` أو
+`aws-lc-rs`، تبعيات غير مباشرة لـ `rustls`) تحتاج compiler C حقيقي (مو بس
+Rust) وقت البناء حتى بخطوة `cargo check`. إذا صار الخطأ التالي شبيه (يذكر
+`ring`, `aws-lc-rs`, `cc`, أو `clang` مع رسالة "not found" أو "linker")،
+الحل المتوقع هو إضافة متغيرات البيئة `CC_aarch64_linux_android` /
+`AR_aarch64_linux_android` بالـ workflow تشير لـ clang الموجود جوا NDK.
+
 ## كيف تشتغل عليه من ترميكس
+
 
 ```bash
 # داخل نسخة مشروعك المرفوعة على GitHub، طبّق نفس التعديلات

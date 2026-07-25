@@ -30,7 +30,6 @@ tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["io", "rt"] }
 axum = { version = "0.8", features = ["ws"] }
 reqwest = { version = "0.12", default-features = false, features = [
-  "native-tls",
   "stream",
   "multipart",
   "json",
@@ -75,6 +74,21 @@ discord-rich-presence = "1.1"
 rust_cast = { path = "vendor/rust_cast", version = "0.20" }
 mdns-sd = "0.13"
 realfft = "3"
+# reqwest's system-OpenSSL TLS backend. Fine on desktop where OpenSSL is
+# installed on the build machine; NOT used on Android (see below) because
+# there's no cross-compiled OpenSSL for aarch64-linux-android in CI.
+reqwest = { version = "0.12", default-features = false, features = ["native-tls"] }
+
+# ---------------------------------------------------------------------------
+# Android-only: reqwest needs a TLS backend, but "native-tls" (OpenSSL) can't
+# cross-compile here without a prebuilt Android OpenSSL sysroot (this is what
+# broke the first CI run — see README-ANDROID.md). rustls is a pure-Rust TLS
+# implementation with no native library to cross-compile, and the project
+# already depends on it directly (see [dependencies] above) plus librqbit
+# already uses it via the "rust-tls" feature, so this fits the existing setup.
+# ---------------------------------------------------------------------------
+[target.'cfg(target_os = "android")'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = [
