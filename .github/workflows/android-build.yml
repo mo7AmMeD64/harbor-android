@@ -32,6 +32,37 @@ jobs:
       - name: Install Android NDK
         run: sdkmanager --install "ndk;27.0.12077973"
 
+      # `ring` (a rustls dependency) compiles native assembly at build time
+      # via cc-rs, which needs a real C compiler for the target — the NDK
+      # ships one, but nothing points cc-rs at it by default. This sets the
+      # per-target CC/AR/linker env vars for all 4 Android ABIs so `cargo
+      # check`/`cargo build` can find it for the rest of the job.
+      - name: Configure NDK toolchain env
+        run: |
+          NDK="$ANDROID_SDK_ROOT/ndk/27.0.12077973"
+          BIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          echo "$BIN" >> "$GITHUB_PATH"
+          {
+            echo "CC_aarch64_linux_android=$BIN/aarch64-linux-android24-clang"
+            echo "CXX_aarch64_linux_android=$BIN/aarch64-linux-android24-clang++"
+            echo "AR_aarch64_linux_android=$BIN/llvm-ar"
+            echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$BIN/aarch64-linux-android24-clang"
+            echo "CC_armv7_linux_androideabi=$BIN/armv7a-linux-androideabi24-clang"
+            echo "CXX_armv7_linux_androideabi=$BIN/armv7a-linux-androideabi24-clang++"
+            echo "AR_armv7_linux_androideabi=$BIN/llvm-ar"
+            echo "CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$BIN/armv7a-linux-androideabi24-clang"
+            echo "CC_i686_linux_android=$BIN/i686-linux-android24-clang"
+            echo "CXX_i686_linux_android=$BIN/i686-linux-android24-clang++"
+            echo "AR_i686_linux_android=$BIN/llvm-ar"
+            echo "CARGO_TARGET_I686_LINUX_ANDROID_LINKER=$BIN/i686-linux-android24-clang"
+            echo "CC_x86_64_linux_android=$BIN/x86_64-linux-android24-clang"
+            echo "CXX_x86_64_linux_android=$BIN/x86_64-linux-android24-clang++"
+            echo "AR_x86_64_linux_android=$BIN/llvm-ar"
+            echo "CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=$BIN/x86_64-linux-android24-clang"
+            echo "ANDROID_NDK_HOME=$NDK"
+            echo "NDK_HOME=$NDK"
+          } >> "$GITHUB_ENV"
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -65,19 +96,13 @@ jobs:
       # couple of minutes, without waiting for the full Gradle/APK build.
       - name: Rust check for aarch64-linux-android
         working-directory: src-tauri
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/27.0.12077973
         run: cargo check --target aarch64-linux-android
 
       - name: Init Android project (first run only)
         run: pnpm tauri android init
-        env:
-          NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/27.0.12077973
 
       - name: Tauri Android build (debug APK)
         run: pnpm tauri android build --debug --target aarch64
-        env:
-          NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/27.0.12077973
 
       - name: Upload APK
         if: success()
