@@ -1,4 +1,5 @@
 import { loadStoredSettings } from "@/lib/settings/load";
+import { isDesktopTauri } from "@/lib/platform";
 
 let windowFullscreen = false;
 let suppressNextExit = false;
@@ -99,7 +100,7 @@ export async function toggleWindowFullscreen(): Promise<void> {
 }
 
 async function osWindowFullscreen(): Promise<boolean> {
-  if (!isTauri()) return false;
+  if (!isDesktopTauri()) return false;
   try {
     const { getCurrentWindow } = await import("@tauri-apps/api/window");
     return await getCurrentWindow().isFullscreen().catch(() => false);
@@ -118,7 +119,7 @@ export async function exitAnyFullscreen(): Promise<void> {
   if (typeof document !== "undefined" && document.fullscreenElement) {
     await document.exitFullscreen().catch(() => {});
   }
-  if (isTauri()) {
+  if (isDesktopTauri()) {
     try {
       const { getCurrentWindow } = await import("@tauri-apps/api/window");
       const w = getCurrentWindow();
@@ -130,7 +131,7 @@ export async function exitAnyFullscreen(): Promise<void> {
   if (windowFullscreen) await exitWindowFullscreen();
 }
 
-if (isTauri()) {
+if (isDesktopTauri()) {
   const before = windowFullscreen;
   void osWindowFullscreen().then((os) => {
     if (windowFullscreen === before && os !== windowFullscreen) setWindowFullscreen(os);

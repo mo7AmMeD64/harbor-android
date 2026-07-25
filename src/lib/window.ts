@@ -3,9 +3,13 @@ import { getCurrentWindow, type Window } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { getWindowFullscreen } from "@/lib/fullscreen-state";
-import { isMacDesktop } from "@/lib/platform";
+import { isMacDesktop, isDesktopTauri } from "@/lib/platform";
 
-const win: Window | null = isTauri() ? getCurrentWindow() : null;
+// ANDROID FORK: guarded by isDesktopTauri() (not just isTauri()) — Tauri's
+// mobile window runtime doesn't back most of these `Window` methods (see
+// README-ANDROID.md), so `win` stays null on Android/iOS and every function
+// below that already does `win?.`/`if (!win) return` becomes a safe no-op.
+const win: Window | null = isDesktopTauri() ? getCurrentWindow() : null;
 
 const IS_MAC = isMacDesktop();
 

@@ -42,3 +42,14 @@ export function isMobileDevice(): boolean {
   }
   return false;
 }
+
+// ANDROID FORK: many `@tauri-apps/api/window` methods (isFullscreen,
+// isMaximized, onResized, toggleMaximize, startResizeDragging...) are
+// unsupported on Tauri's mobile runtime and reject with errors like "Plugin
+// window not initialized" — there's no desktop-style window chrome to
+// query/control on a single, OS-managed mobile Activity anyway. Anything
+// that calls into those APIs should check this first and skip entirely on
+// Android/iOS, instead of trying to detect a specific desktop OS.
+export function isDesktopTauri(): boolean {
+  return detectedDesktopPlatform() !== null;
+}

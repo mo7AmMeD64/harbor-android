@@ -4,14 +4,16 @@ import { toggleWindowFullscreen } from "@/lib/fullscreen-state";
 import { useWindowFullscreen } from "@/lib/use-window-fullscreen";
 import { useSettings } from "@/lib/settings";
 import { useT } from "@/lib/i18n";
-
-const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+import { isDesktopTauri } from "@/lib/platform";
 
 export function WindowControls() {
   const { settings } = useSettings();
   const fullscreen = useWindowFullscreen();
   const t = useT();
-  if (!IS_TAURI || settings.useNativeTitleBar) return null;
+  // ANDROID FORK: these are desktop window-chrome buttons (minimize/
+  // maximize/close) with no equivalent on a mobile Activity — the OS
+  // already provides its own back/home/recents affordances.
+  if (!isDesktopTauri() || settings.useNativeTitleBar) return null;
   return (
     <div data-tauri-drag-region="false" className="flex items-center gap-2">
       <Ctl label={t("chrome.minimize")} onClick={minimize}>

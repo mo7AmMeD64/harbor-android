@@ -10,6 +10,7 @@ import {
 } from "react";
 import { applyTheme, isKnownPreset, nextColorTheme } from "@/lib/theme";
 import { applyAppIcon } from "@/lib/app-icon";
+import { isDesktopTauri } from "@/lib/platform";
 import { getCustomThemes, subscribeCustomThemes } from "@/lib/custom-themes";
 import { loadBgImage, saveBgImage } from "@/lib/theme-storage";
 import { effectiveTmdbLanguage, setTmdbLanguage } from "@/lib/providers/tmdb/tmdb-client";
@@ -283,12 +284,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [settings.stremioDeeplinkInstall]);
 
   useEffect(() => {
-    if (!("__TAURI_INTERNALS__" in window)) return;
-    void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => {
-      getCurrentWindow()
-        .setDecorations(settings.useNativeTitleBar)
-        .catch((e) => console.warn("[harbor] setDecorations failed", e));
-    });
+    // ANDROID FORK: window decorations are a desktop concept (custom
+    // titlebar on/off) — there's nothing to toggle on a mobile Activity, and
+    // calling this on Android's Tauri runtime can reject in ways that
+    // aren't safely caught by the inner .catch() alone (getCurrentWindow()
+    // itself can throw before setDecorations() is even called). Skip
+    // entirely there, and keep a catch-all as a second safety net.
+    if (!isDesktopTauri()) return;
+    void import("@tauri-apps/api/window")
+      .then(({ getCurrentWindow }) =>
+        getCurrentWindow()
+          .setDecorations(settings.useNativeTitleBar)
+          .catch((e) => console.warn("[harbor] setDecorations failed", e)),
+      )
+      .catch((e) => console.warn("[harbor] setDecorations unavailable", e));
   }, [settings.useNativeTitleBar]);
 
   useEffect(() => {
