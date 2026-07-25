@@ -93,6 +93,25 @@ compiler C حقيقي وقت البناء (تجميع كود Assembly)، وال�
 (aarch64, armv7, i686, x86_64) وتصدرها كمتغيرات بيئة (`CC_*`, `AR_*`,
 `CARGO_TARGET_*_LINKER`) تبقى فعالة لبقية الخطوات كلها بنفس الـ job.
 
+### ✅ إصلاح ٣: `Permission updater:default not found`
+**تقدم كبير:** هذا الخطأ صار **بعد** ما `ring`/`aws-lc-rs` بنت بنجاح — يعني
+إصلاح ٢ نجح 100%. الخطأ الجديد صار بمرحلة تانية تماماً (`build.rs` تبع
+Tauri نفسه، بعد ما بدأ يجمّع كود `harbor` وليس تبعياته).
+
+**السبب:** ملف `capabilities/default.json` يذكر الصلاحية `"updater:default"`
+(وبرضو `shell:allow-execute` لتشغيل `yt-dlp` كـ sidecar). بما إن
+`tauri-plugin-updater` مو مُجمّع على أندرويد (حذفناه بإصلاح سابق)، ولا
+الـ yt-dlp sidecar موجود (حذفناه من `externalBin` بـ`tauri.android.conf.json`)،
+فـ Tauri ما يعرف يتحقق من هالصلاحيات وقت البناء لأندرويد ويرفض كامل الملف.
+
+**الحل:** Tauri يدعم تقييد ملف capability بمنصات معينة عبر حقل `"platforms"`.
+سويت:
+- `capabilities/default.json`: أضفت `"platforms": ["linux", "windows", "macOS"]`
+  — يعني هذا الملف يُطبّق بسطح المكتب بس (زي ما كان بالضبط).
+- `capabilities/android.json` (ملف جديد): نفس صلاحيات `default.json` تماماً
+  **بدون** `updater:default` و**بدون** `shell:allow-execute` (sidecar
+  yt-dlp)، مع `"platforms": ["android"]`.
+
 ## كيف تشتغل عليه من ترميكس
 
 

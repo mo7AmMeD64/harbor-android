@@ -1,9 +1,9 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Main window capabilities",
-  "platforms": ["linux", "windows", "macOS"],
-  "windows": ["main", "harbor-pip", "harbor-browser", "harbor-modal-overlay"],
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "android-default",
+  "description": "Main window capabilities (Android). Same as default.json minus the desktop-only updater plugin and the yt-dlp shell sidecar (not bundled on Android).",
+  "platforms": ["android"],
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "os:default",
@@ -31,16 +31,6 @@
       ]
     },
     {
-      "identifier": "shell:allow-execute",
-      "allow": [
-        {
-          "name": "binaries/yt-dlp",
-          "sidecar": true,
-          "args": true
-        }
-      ]
-    },
-    {
       "identifier": "http:default",
       "allow": [
         { "url": "https://*:*/**" },
@@ -55,7 +45,6 @@
     "dialog:allow-message",
     "fs:default",
     "deep-link:default",
-    "updater:default",
     "process:default",
     {
       "identifier": "fs:allow-write-file",
