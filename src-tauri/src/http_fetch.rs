@@ -50,7 +50,14 @@ fn http_client() -> Result<&'static reqwest::Client, String> {
         .get_or_init(|| {
             reqwest::Client::builder()
                 .no_proxy()
-                .hickory_dns(true)
+                // ANDROID FORK: hickory-dns reads /etc/resolv.conf for
+                // nameservers, which doesn't work the same way (or at all)
+                // on Android — every request was failing with a generic
+                // "error sending request" (DNS resolution never completing).
+                // Falling back to reqwest's default resolver (which uses the
+                // system's own getaddrinfo via a thread pool) fixes it, since
+                // that's what every other Android app relies on too.
+                .hickory_dns(cfg!(not(target_os = "android")))
                 .timeout(Duration::from_secs(30))
                 .pool_idle_timeout(Duration::from_secs(30))
                 .pool_max_idle_per_host(4)

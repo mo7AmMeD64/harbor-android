@@ -118,7 +118,10 @@ impl ProxyState {
             .map_err(|e| format!("local_addr: {}", e))?
             .port();
         let client = reqwest::Client::builder()
-            .hickory_dns(true)
+            // ANDROID FORK: see http_fetch.rs — hickory-dns doesn't resolve
+            // correctly on Android, so it's off there and reqwest falls
+            // back to the system resolver instead.
+            .hickory_dns(cfg!(not(target_os = "android")))
             .pool_idle_timeout(std::time::Duration::from_secs(60))
             .build()
             .map_err(|e| format!("client build: {}", e))?;
