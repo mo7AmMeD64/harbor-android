@@ -24,6 +24,7 @@ import { useView } from "@/lib/view";
 import { useWindowFullscreen } from "@/lib/use-window-fullscreen";
 import { toggleWindowFullscreen } from "@/lib/fullscreen-state";
 import { close, minimize } from "@/lib/window";
+import { isDesktopTauri } from "@/lib/platform";
 import { ThreeLiquidGlassSurface } from "@/components/ThreeLiquidGlassSurface";
 
 const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -41,8 +42,9 @@ export function Topbar({ connecting = false }: { connecting?: boolean } = {}) {
   const onLiveRoot = topKind === "live";
   const sidebarHidden = connecting || view === "settings" || onLiveRoot || topKind === "picker";
   const hideSearch = view === "addons" || connecting || topKind === "picker";
-  const sidebarOffset =
-    layout === "stremio"
+  const sidebarOffset = !isDesktopTauri()
+    ? ""
+    : layout === "stremio"
       ? "ps-[80px]"
       : settings.sidebarCollapsed
         ? "ps-[84px]"
@@ -97,7 +99,7 @@ export function Topbar({ connecting = false }: { connecting?: boolean } = {}) {
           <RecordingPill />
           <DownloadsButton />
           {!onLiveRoot && !kid && <TogetherButton />}
-          {IS_TAURI && !settings.useNativeTitleBar && (
+          {IS_TAURI && isDesktopTauri() && !settings.useNativeTitleBar && (
             <div className="ms-1 flex items-center gap-2">
               <Control label={t("chrome.minimize")} onClick={minimize}>
                 <svg width="18" height="18" viewBox="0 0 13 13" fill="none">

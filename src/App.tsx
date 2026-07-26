@@ -4,6 +4,7 @@ import { WindowControls } from "@/chrome/window-controls";
 import { WindowResizeEdges } from "@/chrome/window-resize-edges";
 import { MinUIDock } from "@/chrome/minui-dock";
 import { Sidebar } from "@/chrome/sidebar";
+import { MobileTabBar } from "@/chrome/mobile-tab-bar";
 import { DraculaSidebar } from "@/chrome/dracula-sidebar";
 import { NordSidebar } from "@/chrome/nord-sidebar";
 import { ForestSidebar } from "@/chrome/forest-sidebar";
@@ -20,7 +21,7 @@ import { flushCloudSync } from "@/views/player/hooks/use-stremio-sync";
 import { PlayerRouteFallback } from "@/views/player/player-route-fallback";
 import { setNativeMemoryActive } from "@/lib/native-memory";
 import { useOverlayPinned } from "@/lib/overlay-pin";
-import { isMobileDevice, isWeb } from "@/lib/platform";
+import { isMobileDevice, isWeb, isDesktopTauri } from "@/lib/platform";
 import { makeSafeTauriUnlisten } from "@/lib/tauri-unlisten";
 import { activeLayout } from "@/lib/theme";
 import { useThemePreview } from "@/lib/theme-preview";
@@ -991,45 +992,61 @@ function Shell({ onReady }: { onReady?: () => void }) {
 
   return (
     <div data-kids={kidsTop || kid ? "on" : undefined} className="relative flex h-full">
-      {!settingsTop && !playerActive && !liveTop && !pickerTop && layout === "sidebar" && (
-        <Sidebar />
+      {/* ANDROID FORK: none of the desktop nav-chrome themes below (sidebar
+          rail, top dock, floating window controls...) fit a phone screen —
+          replace the whole family with a single bottom tab bar instead. See
+          README-ANDROID.md. */}
+      {isDesktopTauri() && (
+        <>
+          {!settingsTop && !playerActive && !liveTop && !pickerTop && layout === "sidebar" && (
+            <Sidebar />
+          )}
+          {!settingsTop && !playerActive && !liveTop && !pickerTop && layout === "dracula" && (
+            <DraculaSidebar />
+          )}
+          {!settingsTop && !playerActive && !liveTop && !pickerTop && layout === "nord" && (
+            <NordSidebar />
+          )}
+          {!settingsTop && !playerActive && !liveTop && !pickerTop && layout === "forest" && (
+            <ForestSidebar />
+          )}
+          {!settingsTop && !playerActive && !liveTop && !pickerTop && layout === "stremio" && (
+            <StremioRail />
+          )}
+          {!settingsTop && !playerActive && !pickerTop && layout === "topdock" && <TopDock />}
+          {!settingsTop && !playerActive && !pickerTop && layout === "cinematic" && (
+            <CinematicOverlay />
+          )}
+          {!settingsTop && !playerActive && !pickerTop && layout === "royal" && <RoyalTopbar />}
+          {!settingsTop && !playerActive && !pickerTop && layout === "rail" && <SideRail />}
+          {!playerActive && !pickerTop && layout === "minui" && <MinUIDock />}
+          {!playerActive && !pickerTop && layout === "topdock" && <FloatingBack offsetTop={92} />}
+          {!playerActive && !pickerTop && layout === "cinematic" && <FloatingBack offsetTop={92} />}
+          {!playerActive && !pickerTop && layout === "royal" && <FloatingBack offsetTop={92} />}
+          {!playerActive && !pickerTop && layout === "rail" && (
+            <FloatingBack offsetLeft={settings.sidebarCollapsed ? 88 : 220} offsetTop={28} />
+          )}
+          {!playerActive && !pickerTop && layout === "custom" && (
+            <FloatingBack offsetLeft={20} offsetTop={20} />
+          )}
+          {!playerActive && !pickerTop && layout === "custom" && (
+            <div className="fixed end-3 top-3 z-[120]">
+              <WindowControls />
+            </div>
+          )}
+          {!playerActive && <WindowResizeEdges />}
+        </>
       )}
-      {!settingsTop && !playerActive && !liveTop && !pickerTop && layout === "dracula" && (
-        <DraculaSidebar />
+      {!isDesktopTauri() && !settingsTop && !playerActive && !liveTop && !pickerTop && (
+        <MobileTabBar />
       )}
-      {!settingsTop && !playerActive && !liveTop && !pickerTop && layout === "nord" && (
-        <NordSidebar />
-      )}
-      {!settingsTop && !playerActive && !liveTop && !pickerTop && layout === "forest" && (
-        <ForestSidebar />
-      )}
-      {!settingsTop && !playerActive && !liveTop && !pickerTop && layout === "stremio" && (
-        <StremioRail />
-      )}
-      {!settingsTop && !playerActive && !pickerTop && layout === "topdock" && <TopDock />}
-      {!settingsTop && !playerActive && !pickerTop && layout === "cinematic" && (
-        <CinematicOverlay />
-      )}
-      {!settingsTop && !playerActive && !pickerTop && layout === "royal" && <RoyalTopbar />}
-      {!settingsTop && !playerActive && !pickerTop && layout === "rail" && <SideRail />}
-      {!playerActive && !pickerTop && layout === "minui" && <MinUIDock />}
-      {!playerActive && !pickerTop && layout === "topdock" && <FloatingBack offsetTop={92} />}
-      {!playerActive && !pickerTop && layout === "cinematic" && <FloatingBack offsetTop={92} />}
-      {!playerActive && !pickerTop && layout === "royal" && <FloatingBack offsetTop={92} />}
-      {!playerActive && !pickerTop && layout === "rail" && (
-        <FloatingBack offsetLeft={settings.sidebarCollapsed ? 88 : 220} offsetTop={28} />
-      )}
-      {!playerActive && !pickerTop && layout === "custom" && (
-        <FloatingBack offsetLeft={20} offsetTop={20} />
-      )}
-      {!playerActive && !pickerTop && layout === "custom" && (
-        <div className="fixed end-3 top-3 z-[120]">
-          <WindowControls />
-        </div>
-      )}
-      {!playerActive && <WindowResizeEdges />}
       <div
         className={`relative flex min-h-0 min-w-0 flex-1 flex-col ${playerActive ? "invisible" : ""}`}
+        style={
+          !isDesktopTauri() && !settingsTop && !playerActive && !liveTop && !pickerTop
+            ? { paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }
+            : undefined
+        }
       >
         <div className={layer(homeTop)}>
           <Home active={homeTop} onReady={onReady} />
